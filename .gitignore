@@ -1,2 +1,5 @@
 exp*
 .vscode/
+*.exe
+output.md
+tomasulo
