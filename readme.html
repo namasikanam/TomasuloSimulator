@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Tomasulo 模拟器实验报告</title>
+        
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+        
+        <style>
+.task-list-item { list-style-type: none; } .task-list-item-checkbox { margin-left: -20px; vertical-align: middle; }
+</style>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        
+        
+    </head>
+    <body class="vscode-light">
+        <h2 id="tomasulo-%e6%a8%a1%e6%8b%9f%e5%99%a8%e5%ae%9e%e9%aa%8c%e6%8a%a5%e5%91%8a">Tomasulo 模拟器实验报告</h2>
+<p>计72 谢兴宇 2017011326</p>
+<h3 id="%e7%bc%96%e8%af%91">编译</h3>
+<p>本项目的源代码只有<code>tomasulo.cpp</code>和<code>tomasulo.h</code>两个文件，可以最基础的编译单文件 C++ 项目的方式来编译。</p>
+<p>比如，在 Ubuntu 下，如果安装了 GCC，那么就可以直接：</p>
+<pre><code class="language-bash"><div>g++ tomasulo.cpp -o tomasulo
+</div></code></pre>
+<h3 id="%e8%bf%90%e8%a1%8c">运行</h3>
+<p>需要一个不带后缀的文件名作为参数，将自动从<code>./TestCase/</code>目录下寻找相应的<code>.nel</code>文件，并将其日志输出到<code>Log/</code>中相应的<code>.log</code>文件中。并会输出一个<code>output.md</code>，为 Markdown 格式的每个 cycle 的瞬时状态结果。</p>
+<pre><code class="language-bash"><div>./tomasulo &lt;filename&gt; [-t]
+</div></code></pre>
+<p>例如</p>
+<pre><code class="language-bash"><div>./tomasulo 0.basic
+</div></code></pre>
+<p>由于 IO 需要占用大量资源，所以我们提供了一个选项<code>-t</code>，以在性能测试时关闭对于每一个<code>cycle</code>的瞬时状态的过于大量的输出。</p>
+<h3 id="%e8%ae%be%e8%ae%a1%e6%80%9d%e8%b7%af">设计思路</h3>
+<p>所用的类的设计如下（形成多棵树形的继承关系）</p>
+<ul>
+<li><code>Inst</code>：指令基类
+<ul>
+<li><code>LoadInst</code>：LD指令</li>
+<li><code>ArithmeticInst</code>：算数指令</li>
+</ul>
+</li>
+<li><code>ReservationStation</code>：保留站
+<ul>
+<li><code>ArithmeticBuffer</code>：算数指令保留站</li>
+<li><code>LoadBuffer</code>：加载指令保留站</li>
+</ul>
+</li>
+<li><code>FunctionUnit</code>：功能单元</li>
+<li><code>Register</code>：寄存器</li>
+</ul>
+<p>每一条指令会在三个地方出现：</p>
+<ol>
+<li>指令流</li>
+<li>保留站</li>
+<li>功能单元</li>
+</ol>
+<p>简便起见，我们将所有的时间戳都记录在了<code>1</code>中，并维护了<code>3-&gt;2</code>和<code>2-&gt;1</code>的单向指针。</p>
+<p>核心的思路是将每一个周期的工作划分为三部分：</p>
+<ul>
+<li><code>try_write()</code>：尝试将指令结果写回寄存器，并更新保留站。</li>
+<li><code>try_issue()</code>：尝试将指令发射至保留站中。</li>
+<li><code>try_execute()</code>：尝试将指令将保留站中的指令移入功能单元，并执行处于功能单元中的指令。</li>
+</ul>
+<blockquote>
+<p>说明：由于旁路的存在，我们将<code>try_write</code>置于最前——而不是最后——以更简便地模拟真实硬件中发生的情况。</p>
+</blockquote>
+<h3 id="%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96">性能优化</h3>
+<p>在最初的实现中，为了方便起见我使用了大量 STL 中的数据结构。之后为了优化性能，我将它们改为了比较贴近底层的 C 风格的实现，运行效率有了极大提升，结果如下表所示。</p>
+<table>
+<thead>
+<tr>
+<th>测例</th>
+<th>运行时间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Big_test</td>
+<td>2.454s</td>
+</tr>
+<tr>
+<td>Mul</td>
+<td>0.016s</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%e7%ae%97%e6%b3%95%e5%88%86%e6%9e%90">算法分析</h3>
+<p>Tomasulo 算法的特点是将状态记录分散到各个不同的部件中，这导致其细节相对繁杂。但基本思路清晰易懂，即用 reservation station 之间的依赖来简化寄存器之间的依赖，用 common data bus 来处理依赖关系。</p>
+<p>Tomasulo 算法与记分牌算法的差异：</p>
+<ul>
+<li>记分牌算法集中记录状态，而 Tomasulo 算法的状态是分布式记录的</li>
+<li>Tomasulo 算法支持寄存器重命名，一定程度上可以消除 WAR 和 WAW 造成的阻塞。</li>
+</ul>
+
+    </body>
+    </html>

@@ -3,3 +3,6 @@ exp*
 *.exe
 output.md
 tomasulo
+gmon.out
+Log/
+TestCase/

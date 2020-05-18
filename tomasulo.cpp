@@ -46,7 +46,7 @@ bool isArithmeticUnit(FunctionUnit *fu)
     assert(i >= 0);
     assert(i < adds_length + mults_length + loads_length);
 
-    printf("The fus[%d] is finishing.\n", i);
+    // printf("The fus[%d] is finishing.\n", i);
 
     return i < adds_length + mults_length;
 }
@@ -107,10 +107,6 @@ void try_write()
         {
             LoadBuffer *lb = (LoadBuffer *)(fu->rs);
             auto inst = lb->getInst();
-            if (inst->op != "LD")
-            {
-                cout << inst->op << " should be LD" << endl;
-            }
             assert(inst->op == "LD");
             res = inst->imm;
             rid = inst->reg;
@@ -125,7 +121,7 @@ void try_write()
             lb->busy = false;
         }
         // notify other reservation stations
-        printf("notify\n");
+        // printf("notify\n");
         for (int i = 0; i < arss_length; ++i)
             if (arss[i].busy && (arss[i].Qj == fu->rs || arss[i].Qk == fu->rs))
             {
@@ -144,7 +140,7 @@ void try_write()
             }
         for (int i = 0; i < mrss_length; ++i)
         {
-            printf("mrss[%d]: busy: %d, eq (Qj): %d, eq (Qk): %d\n", i, mrss[i].busy, mrss[i].Qj == fu->rs, mrss[i].Qk == fu->rs);
+            // printf("mrss[%d]: busy: %d, eq (Qj): %d, eq (Qk): %d\n", i, mrss[i].busy, mrss[i].Qj == fu->rs, mrss[i].Qk == fu->rs);
             if (mrss[i].busy && (mrss[i].Qj == fu->rs || mrss[i].Qk == fu->rs))
             {
                 if (mrss[i].Qj == fu->rs)
@@ -185,7 +181,7 @@ void try_issue()
         if (lb == nullptr)
             return;
 
-        cout << "issue " << cur << " at " << to_string(lb) << endl;
+        // cout << "issue " << cur << " at " << to_string(lb) << endl;
 
         LoadInst *inst = (LoadInst *)(insts[cur++]);
 
@@ -223,7 +219,7 @@ void try_issue()
         if (ab == nullptr)
             return;
 
-        cout << "issue " << cur << " at " << to_string(ab) << endl;
+        // cout << "issue " << cur << " at " << to_string(ab) << endl;
 
         ArithmeticInst *inst = (ArithmeticInst *)(insts[cur++]);
 
@@ -280,7 +276,7 @@ void try_execute()
             adds[i].need_wait = true;
             adds[i].remain = 3;
 
-            printf("arss[%d] executed at adds[%d]\n", ab - arss, i);
+            // printf("arss[%d] executed at adds[%d]\n", ab - arss, i);
 
             ab->executed = true;
         }
@@ -293,7 +289,7 @@ void try_execute()
         {
             for (int j = 0; j < mrss_length; ++j)
             {
-                printf("Try from mrss[%d] to mults[%d]\n", i, j);
+                // printf("Try from mrss[%d] to mults[%d]\n", i, j);
                 if (mrss[j].busy && !mrss[j].executed && mrss[j].Qj == nullptr && mrss[j].Qk == nullptr &&
                     (ab == nullptr || mrss[j].inst->readyTime < ab->inst->readyTime || mrss[j].inst->readyTime == ab->inst->readyTime && mrss[j].inst->issueTime < ab->inst->issueTime))
                 {
@@ -309,7 +305,7 @@ void try_execute()
             else
                 mults[i].remain = 4;
 
-            printf("mrss[%d] executed at mults[%d]\n", ab - mrss, i);
+            // printf("mrss[%d] executed at mults[%d]\n", ab - mrss, i);
 
             ab->executed = true;
         }
@@ -332,7 +328,7 @@ void try_execute()
             loads[i].need_wait = true;
             loads[i].remain = 3;
 
-            printf("lbs[%d] executed at loads[%d]\n", lb - lbs, i);
+            // printf("lbs[%d] executed at loads[%d]\n", lb - lbs, i);
 
             lb->executed = true;
         }
@@ -359,12 +355,17 @@ void try_execute()
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc > 3)
     {
-        printf("Usage: ./tomasulo <file>\n");
+        printf("Usage (with output): ./tomasulo <file>\n");
+        printf("Example: ./tomasulo 0.basic\n");
+        printf("Usage (without output): ./tomasulo <file> -t\n");
         printf("Example: ./tomasulo 0.basic\n");
         return 0;
     }
+    bool output = true;
+    if (argc == 3)
+        output = false;
     string filename(argv[1]);
     if (freopen(("TestCase/" + filename + ".nel").c_str(), "r", stdin) == nullptr)
     {
@@ -399,9 +400,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("After input:\n");
-    for (Inst *inst : insts)
-        cout << inst->op << endl;
+    // printf("After input:\n");
+    // for (Inst *inst : insts)
+    //     cout << inst->op << endl;
 
     if (freopen("output.md", "w", stdout) == nullptr)
     {
@@ -409,12 +410,12 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    printf("After open output.md\n");
+    // printf("After open output.md\n");
 
     // run!
-    for (; t < 100; ++t)
+    for (; t; ++t)
     {
-        printf("Before checking.\n");
+        // printf("Before checking.\n");
 
         bool done = cur == insts.size();
         for (auto ars : arss)
@@ -426,101 +427,96 @@ int main(int argc, char *argv[])
         if (done)
             break;
 
-        printf("A cycle is beginning.\n");
-
         // run one cycle
         try_write();
-
-        printf("Tried to write.\n");
-
         try_issue();
-
-        printf("Tried to issue.\n");
-
         try_execute();
 
-        printf("Tried to execute.\n");
-        // print
-        printf("## Cycle %d\n", t);
-        printf("### Reservation Stations\n");
-        printf("| | Busy | Op | Vj | Vk | Qj | Qk |\n");
-        printf("| --- | --- | --- | --- | --- | --- | --- |\n");
-        for (int i = 0; i < arss_length; ++i)
+        if (output)
         {
-            printf("| %s |", to_string((ReservationStation *)(arss + i)).c_str());
-            if (arss[i].busy)
+            // printf("Tried to execute.\n");
+            // print
+            printf("## Cycle %d\n", t);
+            printf("### Reservation Stations\n");
+            printf("| | Busy | Op | Vj | Vk | Qj | Qk |\n");
+            printf("| --- | --- | --- | --- | --- | --- | --- |\n");
+            for (int i = 0; i < arss_length; ++i)
             {
-                printf(" Yes | %s |", arss[i].inst->op.c_str());
-                if (arss[i].Qj == nullptr)
-                    printf(" 0x%X |", arss[i].Vj);
+                printf("| %s |", to_string((ReservationStation *)(arss + i)).c_str());
+                if (arss[i].busy)
+                {
+                    printf(" Yes | %s |", arss[i].inst->op.c_str());
+                    if (arss[i].Qj == nullptr)
+                        printf(" 0x%X |", arss[i].Vj);
+                    else
+                        printf(" |");
+                    if (arss[i].Qk == nullptr)
+                        printf(" 0x%X |", arss[i].Vk);
+                    else
+                        printf(" |");
+                    printf(" %s | %s |", to_string(arss[i].Qj).c_str(), to_string(arss[i].Qk).c_str());
+                }
                 else
-                    printf(" |");
-                if (arss[i].Qk == nullptr)
-                    printf(" 0x%X |", arss[i].Vk);
-                else
-                    printf(" |");
-                printf(" %s | %s |", to_string(arss[i].Qj).c_str(), to_string(arss[i].Qk).c_str());
-            }
-            else
-                printf(" No | | | | |");
-            // for debug
-            printf(" %c |", "NE"[arss[i].executed]);
+                    printf(" No | | | | |");
+                // for debug
+                // printf(" %c |", "NE"[arss[i].executed]);
 
-            puts("");
-        }
-        for (int i = 0; i < mrss_length; ++i)
-        {
-            printf("| %s |", to_string((ReservationStation *)(mrss + i)).c_str());
-            if (mrss[i].busy)
+                puts("");
+            }
+            for (int i = 0; i < mrss_length; ++i)
             {
-                printf(" Yes | %s |", mrss[i].inst->op.c_str());
-                if (mrss[i].Qj == nullptr)
-                    printf(" %d |", mrss[i].Vj);
+                printf("| %s |", to_string((ReservationStation *)(mrss + i)).c_str());
+                if (mrss[i].busy)
+                {
+                    printf(" Yes | %s |", mrss[i].inst->op.c_str());
+                    if (mrss[i].Qj == nullptr)
+                        printf(" %d |", mrss[i].Vj);
+                    else
+                        printf(" |");
+                    if (mrss[i].Qk == nullptr)
+                        printf(" %d |", mrss[i].Vk);
+                    else
+                        printf(" |");
+                    printf(" %s | %s |", to_string(mrss[i].Qj).c_str(), to_string(mrss[i].Qk).c_str());
+                }
                 else
-                    printf(" |");
-                if (mrss[i].Qk == nullptr)
-                    printf(" %d |", mrss[i].Vk);
-                else
-                    printf(" |");
-                printf(" %s | %s |", to_string(mrss[i].Qj).c_str(), to_string(mrss[i].Qk).c_str());
+                    printf(" No | | | | |");
+                // for debug
+                // printf(" %c |", "NE"[mrss[i].executed]);
+                puts("");
             }
-            else
-                printf(" No | | | | |");
-            // for debug
-            printf(" %c |", "NE"[mrss[i].executed]);
-            puts("");
-        }
-        printf("### Load Buffers\n");
-        printf("| | Busy | Address |\n");
-        printf("| --- | --- | --- |\n");
-        for (int i = 0; i < lbs_length; ++i)
-        {
-            // printf("\n to_string (lbs + %d)\n", i);
-            printf("| %s |", to_string((ReservationStation *)(lbs + i)).c_str());
-            if (lbs[i].busy)
-                printf(" Yes | 0x%X |", lbs[i].imm);
-            else
-                printf(" No | |");
-            // for debug
-            printf(" %c |", "NE"[lbs[i].executed]);
-            puts("");
-        }
-        printf("### Registers\n");
-        printf("| Register | State |\n");
-        printf("| --- | --- |\n");
-        for (int i = 0; i < 32; ++i)
-            printf("| R%d | %s |\n", i, to_string(regs[i].rs).c_str());
+            printf("### Load Buffers\n");
+            printf("| | Busy | Imm |\n");
+            printf("| --- | --- | --- |\n");
+            for (int i = 0; i < lbs_length; ++i)
+            {
+                // printf("\n to_string (lbs + %d)\n", i);
+                printf("| %s |", to_string((ReservationStation *)(lbs + i)).c_str());
+                if (lbs[i].busy)
+                    printf(" Yes | 0x%X |", lbs[i].imm);
+                else
+                    printf(" No | |");
+                // for debug
+                // printf(" %c |", "NE"[lbs[i].executed]);
+                puts("");
+            }
+            printf("### Registers\n");
+            printf("| Register | State |\n");
+            printf("| --- | --- |\n");
+            for (int i = 0; i < 32; ++i)
+                printf("| R%d | %s |\n", i, to_string(regs[i].rs).c_str());
 
-        // for debug
-        printf("### Function Units\n");
-        printf("| | Instruction | Remaining |\n");
-        for (int i = 0; i < 7; ++i)
-        {
-            printf("| %s | ", to_string(fus + i).c_str());
-            if (fus[i].rs != nullptr)
-                printf("%s | %d |\n", fus[i].rs->inst->to_string().c_str(), fus[i].remain);
-            else
-                printf("| |\n");
+            // for debug
+            // printf("### Function Units\n");
+            // printf("| | Instruction | Remaining |\n");
+            // for (int i = 0; i < 7; ++i)
+            // {
+            //     printf("| %s | ", to_string(fus + i).c_str());
+            //     if (fus[i].rs != nullptr)
+            //         printf("%s | %d |\n", fus[i].rs->inst->to_string().c_str(), fus[i].remain);
+            //     else
+            //         printf("| |\n");
+            // }
         }
     }
 
