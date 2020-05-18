@@ -6,7 +6,7 @@ using namespace std;
 int t = 1;
 
 vector<Inst *> insts;
-int cur;
+int cur = 0;
 
 ArithmeticBuffer arss[6];
 ArithmeticBuffer mrss[3];
@@ -71,7 +71,8 @@ void try_write()
 {
     for (auto fu : cdb)
     {
-        int res = 0, rid = -1;
+        unsigned res = 0;
+        int rid = -1;
         if (isArithmeticUnit(fu))
         {
             ArithmeticBuffer *ab = (ArithmeticBuffer *)(fu->rs);
@@ -184,7 +185,7 @@ void try_issue()
         if (lb == nullptr)
             return;
 
-        cout << "issue at " << to_string(lb) << endl;
+        cout << "issue " << cur << " at " << to_string(lb) << endl;
 
         LoadInst *inst = (LoadInst *)(insts[cur++]);
 
@@ -222,13 +223,11 @@ void try_issue()
         if (ab == nullptr)
             return;
 
-        cout << "issue at " << to_string(ab) << endl;
+        cout << "issue " << cur << " at " << to_string(ab) << endl;
 
         ArithmeticInst *inst = (ArithmeticInst *)(insts[cur++]);
 
         inst->issueTime = t;
-
-        regs[inst->reg[0]].rs = (ReservationStation *)ab;
 
         ab->busy = true;
         ab->executed = false;
@@ -256,6 +255,8 @@ void try_issue()
 
         if (ab->Qj == nullptr && ab->Qk == nullptr)
             inst->readyTime = t;
+
+        regs[inst->reg[0]].rs = (ReservationStation *)ab;
     }
 }
 
@@ -278,6 +279,8 @@ void try_execute()
             adds[i].rs = (ReservationStation *)ab;
             adds[i].need_wait = true;
             adds[i].remain = 3;
+
+            printf("arss[%d] executed at adds[%d]\n", ab - arss, i);
 
             ab->executed = true;
         }
@@ -306,6 +309,8 @@ void try_execute()
             else
                 mults[i].remain = 4;
 
+            printf("mrss[%d] executed at mults[%d]\n", ab - mrss, i);
+
             ab->executed = true;
         }
     }
@@ -326,6 +331,8 @@ void try_execute()
             loads[i].rs = (ReservationStation *)lb;
             loads[i].need_wait = true;
             loads[i].remain = 3;
+
+            printf("lbs[%d] executed at loads[%d]\n", lb - lbs, i);
 
             lb->executed = true;
         }
@@ -383,12 +390,12 @@ int main(int argc, char *argv[])
         if (vs[0] == "LD")
         {
             assert(vs.size() == 3);
-            insts.push_back(new LoadInst(stoi(vs[1].substr(1)), stoi(vs[2], 0, 16)));
+            insts.push_back(new LoadInst(stoul(vs[1].substr(1)), stoul(vs[2], 0, 16)));
         }
         else
         {
             assert(vs.size() == 4);
-            insts.push_back(new ArithmeticInst(vs[0], stoi(vs[1].substr(1)), stoi(vs[2].substr(1)), stoi(vs[3].substr(1))));
+            insts.push_back(new ArithmeticInst(vs[0], stoul(vs[1].substr(1)), stoul(vs[2].substr(1)), stoul(vs[3].substr(1))));
         }
     }
 
@@ -445,11 +452,11 @@ int main(int argc, char *argv[])
             {
                 printf(" Yes | %s |", arss[i].inst->op.c_str());
                 if (arss[i].Qj == nullptr)
-                    printf(" %d |", arss[i].Vj);
+                    printf(" 0x%X |", arss[i].Vj);
                 else
                     printf(" |");
                 if (arss[i].Qk == nullptr)
-                    printf(" %d |", arss[i].Vk);
+                    printf(" 0x%X |", arss[i].Vk);
                 else
                     printf(" |");
                 printf(" %s | %s |", to_string(arss[i].Qj).c_str(), to_string(arss[i].Qk).c_str());
@@ -491,7 +498,7 @@ int main(int argc, char *argv[])
             // printf("\n to_string (lbs + %d)\n", i);
             printf("| %s |", to_string((ReservationStation *)(lbs + i)).c_str());
             if (lbs[i].busy)
-                printf(" Yes | %d |", lbs[i].imm);
+                printf(" Yes | 0x%X |", lbs[i].imm);
             else
                 printf(" No | |");
             // for debug

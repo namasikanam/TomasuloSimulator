@@ -20,9 +20,9 @@ struct Inst
 struct LoadInst : Inst
 {
     int reg;
-    int imm;
+    unsigned imm;
 
-    LoadInst(int reg, int imm) : Inst("LD"), reg(reg), imm(imm) {}
+    LoadInst(int reg, unsigned imm) : Inst("LD"), reg(reg), imm(imm) {}
 
     std::string to_string()
     {
@@ -56,7 +56,7 @@ struct ReservationStation
 struct ArithmeticBuffer : ReservationStation
 {
     ReservationStation *Qj = nullptr, *Qk = nullptr;
-    int Vj = 0, Vk = 0;
+    unsigned Vj = 0, Vk = 0;
 
     ArithmeticInst *getInst()
     {
@@ -66,7 +66,7 @@ struct ArithmeticBuffer : ReservationStation
 
 struct LoadBuffer : ReservationStation
 {
-    int imm = 0;
+    unsigned imm = 0;
 
     LoadBuffer()
     {
@@ -89,5 +89,5 @@ struct FunctionUnit
 struct Register
 {
     ReservationStation *rs;
-    int stat = 0;
+    unsigned stat = 0;
 };
